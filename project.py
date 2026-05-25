@@ -286,7 +286,7 @@ def process_task_step(message):
             reply_markup=markup
         )
 
- elif state['step'] == 'deadline':
+    elif state['step'] == 'deadline':
         # Переходим в режим ожидания ввода дедлайна
         state['step'] = 'waiting_for_deadline'
         
@@ -445,6 +445,7 @@ def process_task_step(message):
                     "Или нажмите одну из кнопок:",
                     reply_markup=markup
                 )
+                
     elif state['step'] == 'duration':
         if '30 мин' in text:
             duration = 30
