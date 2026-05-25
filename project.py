@@ -10,6 +10,33 @@ import schedule
 TOKEN = '8988021987:AAGxLUpbmirBTHXXPR2EufMsX3L_-C133tk'
 bot = telebot.TeleBot(TOKEN)
 
+# Команда /start
+@bot.message_handler(commands=['start'])
+def start_command(message):
+    user_id = message.from_user.id
+    user_states[user_id] = {'step': None, 'task_data': {}}
+
+    welcome_text = (
+        f"👋 Привет, {message.from_user.first_name}!\n\n"
+        "Я твой умный бот-планер. Я помогу:\n"
+        "• Расставлять приоритеты\n"
+        "• Находить свободное время\n"
+        "• Помнить о важных делах\n\n"
+        "Выбери действие в меню:"
+    )
+
+    bot.send_message(message.chat.id, welcome_text, reply_markup=main_menu())
+
+# Главное меню
+def main_menu():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    btn1 = types.KeyboardButton('➕ Новая задача')
+    btn2 = types.KeyboardButton('📋 Мои задачи')
+    btn3 = types.KeyboardButton('📊 Статистика')
+    btn4 = types.KeyboardButton('✅ Выполненные')
+    btn5 = types.KeyboardButton('❓ Помощь')
+    markup.add(btn1, btn2, btn3, btn4, btn5)
+    return markup
 
 # Инициализация базы данных
 def init_db():
@@ -165,38 +192,6 @@ def estimate_duration(title, category):
     else:
         return 60
 
-
-# Главное меню
-def main_menu():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    btn1 = types.KeyboardButton('➕ Новая задача')
-    btn2 = types.KeyboardButton('📋 Мои задачи')
-    btn3 = types.KeyboardButton('📊 Статистика')
-    btn4 = types.KeyboardButton('✅ Выполненные')
-    btn5 = types.KeyboardButton('❓ Помощь')
-    markup.add(btn1, btn2, btn3, btn4, btn5)
-    return markup
-
-
-# Команда /start
-@bot.message_handler(commands=['start'])
-def start_command(message):
-    user_id = message.from_user.id
-    user_states[user_id] = {'step': None, 'task_data': {}}
-
-    welcome_text = (
-        f"👋 Привет, {message.from_user.first_name}!\n\n"
-        "Я твой умный бот-планер. Я помогу:\n"
-        "• Создавать и управлять задачами\n"
-        "• Автоматически определять приоритеты\n"
-        "• Находить свободное время\n"
-        "• Напоминать о важных делах\n\n"
-        "Выберите действие в меню:"
-    )
-
-    bot.send_message(message.chat.id, welcome_text, reply_markup=main_menu())
-
-
 # Обработчик текстовых сообщений
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
@@ -213,7 +208,7 @@ def handle_all_messages(message):
         show_completed_tasks(message)
     elif text == '❓ Помощь':
         show_help(message)
-    elif text == '❌ Отмена':
+    elif text == '❌ Отменить задачу':
         cancel_operation(message)
     else:
         # Проверяем, находится ли пользователь в процессе создания задачи
@@ -235,11 +230,11 @@ def start_new_task(message):
     state['task_data'] = {}
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton('❌ Отмена'))
+    markup.add(types.KeyboardButton('❌ Отменить задачу'))
 
     msg = bot.send_message(
         message.chat.id,
-        "📝 Шаг 1/6: Введите название задачи:",
+        "📝 Шаг 1/6: Введи название задачи:",
         reply_markup=markup
     )
 
@@ -257,11 +252,11 @@ def process_task_step(message):
         categories = ['📚 Учеба', '💼 Работа', '🏠 Быт', '🎮 Развлечение', '💪 Здоровье', '💰 Финансы', '📋 Другое']
         for cat in categories:
             markup.add(types.KeyboardButton(cat))
-        markup.add(types.KeyboardButton('❌ Отмена'))
+        markup.add(types.KeyboardButton('❌ Отменить задачу'))
 
         bot.send_message(
             message.chat.id,
-            "Шаг 2/6: Выберите категорию задачи:",
+            "Шаг 2/6: Выбери категорию задачи:",
             reply_markup=markup
         )
 
@@ -277,12 +272,12 @@ def process_task_step(message):
             types.KeyboardButton('📅 Завтра'),
             types.KeyboardButton('📅 Через неделю'),
             types.KeyboardButton('🚫 Без дедлайна'),
-            types.KeyboardButton('❌ Отмена')
+            types.KeyboardButton('❌ Отменить задачу')
         )
 
         bot.send_message(
             message.chat.id,
-            "Шаг 3/6: Укажите дедлайн:",
+            "Шаг 3/6: Укажи дедлайн:",
             reply_markup=markup
         )
 
@@ -297,16 +292,16 @@ def process_task_step(message):
             types.KeyboardButton('📅 Сегодня'),
             types.KeyboardButton('📅 Завтра'),
             types.KeyboardButton('🚫 Без дедлайна'),
-            types.KeyboardButton('❌ Отмена')
+            types.KeyboardButton('❌ Отменить задачу')
         )
         
         bot.send_message(
             message.chat.id,
-            "Шаг 3/6: Укажите дедлайн:\n\n"
-            "📆 Введите дату и время в формате:\n"
+            "Шаг 3/6: Укажи дедлайн:\n\n"
+            "📆 Введи дату и время в формате:\n"
             "ГГГГ-ММ-ДД ЧЧ:ММ\n\n"
             "📌 Пример: 2026-12-31 23:59\n\n"
-            "Или используйте кнопки:",
+            "Или используй кнопки:",
             reply_markup=markup
         )
     
@@ -331,12 +326,12 @@ def process_task_step(message):
                 types.KeyboardButton('🕐 30 мин'),
                 types.KeyboardButton('🕑 1 час'),
                 types.KeyboardButton('🕒 2 часа'),
-                types.KeyboardButton('❌ Отмена')
+                types.KeyboardButton('❌ Отменить задачу')
             )
             
             bot.send_message(
                 message.chat.id,
-                f"Шаг 4/6: Укажите длительность задачи:\n"
+                f"Шаг 4/6: Укажи длительность задачи:\n"
                 f"Рекомендуемое время: {estimated} минут",
                 reply_markup=markup
             )
@@ -358,12 +353,12 @@ def process_task_step(message):
                 types.KeyboardButton('🕐 30 мин'),
                 types.KeyboardButton('🕑 1 час'),
                 types.KeyboardButton('🕒 2 часа'),
-                types.KeyboardButton('❌ Отмена')
+                types.KeyboardButton('❌ Отменить задачу')
             )
             
             bot.send_message(
                 message.chat.id,
-                f"Шаг 4/6: Укажите длительность задачи:\n"
+                f"Шаг 4/6: Укажи длительность задачи:\n"
                 f"Рекомендуемое время: {estimated} минут",
                 reply_markup=markup
             )
@@ -384,17 +379,17 @@ def process_task_step(message):
                 types.KeyboardButton('🕐 30 мин'),
                 types.KeyboardButton('🕑 1 час'),
                 types.KeyboardButton('🕒 2 часа'),
-                types.KeyboardButton('❌ Отмена')
+                types.KeyboardButton('❌ Отменить задачу')
             )
             
             bot.send_message(
                 message.chat.id,
-                f"Шаг 4/6: Укажите длительность задачи:\n"
+                f"Шаг 4/6: Укажи длительность задачи:\n"
                 f"Рекомендуемое время: {estimated} минут",
                 reply_markup=markup
             )
             
-        elif text == '❌ Отмена':
+        elif text == '❌ Отменить задачу':
             cancel_operation(message)
             
         else:
@@ -407,7 +402,7 @@ def process_task_step(message):
                     bot.send_message(
                         message.chat.id,
                         "❌ Дедлайн не может быть в прошлом!\n"
-                        "Пожалуйста, введите будущую дату и время.\n\n"
+                        "Пожалуйста, Введи будущую дату и время.\n\n"
                         "📆 Формат: ГГГГ-ММ-ДД ЧЧ:ММ\n"
                         "Пример: 2026-12-31 23:59"
                     )
@@ -428,12 +423,12 @@ def process_task_step(message):
                     types.KeyboardButton('🕐 30 мин'),
                     types.KeyboardButton('🕑 1 час'),
                     types.KeyboardButton('🕒 2 часа'),
-                    types.KeyboardButton('❌ Отмена')
+                    types.KeyboardButton('❌ Отменить задачу')
                 )
                 
                 bot.send_message(
                     message.chat.id,
-                    f"Шаг 4/6: Укажите длительность задачи:\n"
+                    f"Шаг 4/6: Укажи длительность задачи:\n"
                     f"Рекомендуемое время: {estimated} минут",
                     reply_markup=markup
                 )
@@ -458,7 +453,7 @@ def process_task_step(message):
         elif 'мин' in text:
             duration = int(text.split()[0])
         else:
-            bot.send_message(message.chat.id, "Пожалуйста, выберите один из вариантов")
+            bot.send_message(message.chat.id, "Пожалуйста, Выбери один из вариантов")
             return
 
         state['task_data']['duration'] = duration
@@ -469,12 +464,12 @@ def process_task_step(message):
             types.KeyboardButton('📍 Добавить адрес'),
             types.KeyboardButton('🎒 Добавить вещи'),
             types.KeyboardButton('✅ Пропустить'),
-            types.KeyboardButton('❌ Отмена')
+            types.KeyboardButton('❌ Отменить задачу')
         )
 
         bot.send_message(
             message.chat.id,
-            "Шаг 5/6: Хотите добавить дополнительную информацию?",
+            "Шаг 5/6: Хочешь добавить дополнительную информацию?",
             reply_markup=markup
         )
 
@@ -483,15 +478,15 @@ def process_task_step(message):
             state['step'] = 'address'
             msg = bot.send_message(
                 message.chat.id,
-                "Введите адрес:",
-                reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('❌ Отмена'))
+                "Введи адрес:",
+                reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('❌ Отменить задачу'))
             )
         elif text == '🎒 Добавить вещи':
             state['step'] = 'items'
             msg = bot.send_message(
                 message.chat.id,
-                "Введите список вещей через запятую:",
-                reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('❌ Отмена'))
+                "Введи список вещей через запятую:",
+                reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(types.KeyboardButton('❌ Отменить задачу'))
             )
         elif text == '✅ Пропустить':
             save_task(message)
@@ -501,10 +496,10 @@ def process_task_step(message):
         state['step'] = 'items'
         msg = bot.send_message(
             message.chat.id,
-            "Введите список вещей (или нажмите 'Пропустить'):",
+            "Введи список вещей (или нажмите 'Пропустить'):",
             reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(
                 types.KeyboardButton('✅ Пропустить'),
-                types.KeyboardButton('❌ Отмена')
+                types.KeyboardButton('❌ Отменить задачу')
             )
         )
 
@@ -603,7 +598,7 @@ def show_active_tasks(message):
         )
         return
 
-    response = "📋 Ваши активные задачи:\n\n"
+    response = "📋 Твои активные задачи:\n\n"
 
     for task in tasks:
         task_id, title, category, deadline, duration, priority, address, items = task
