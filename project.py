@@ -269,110 +269,74 @@ def process_task_step(message):
         # Извлекаем название категории из emoji+текст
         category = text.split(' ', 1)[1] if ' ' in text else text
         state['task_data']['category'] = category
-        state['step'] = 'deadline'
-
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        markup.add(
-            types.KeyboardButton('📅 Сегодня'),
-            types.KeyboardButton('📅 Завтра'),
-            types.KeyboardButton('📅 Через неделю'),
-            types.KeyboardButton('🚫 Без дедлайна'),
-            types.KeyboardButton('❌ Отмена')
-        )
-
-        bot.send_message(
-            message.chat.id,
-            "Шаг 3/6: Укажите дедлайн:",
-            reply_markup=markup
-        )
-
-    elif state['step'] == 'category':
-        # Извлекаем название категории
-        category = text.split(' ', 1)[1] if ' ' in text else text
-        state['task_data']['category'] = category
         state['step'] = 'waiting_for_deadline'
         
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add(
-            types.KeyboardButton('📅 Сегодня'),
-            types.KeyboardButton('📅 Завтра'),
             types.KeyboardButton('🚫 Без дедлайна'),
             types.KeyboardButton('❌ Отмена')
         )
         
         bot.send_message(
             message.chat.id,
-            "Шаг 3/6: Укажите дедлайн:\n\n"
+            "Шаг 3/6: Укажите дедлайн\n\n"
             "📆 Введите дату и время в формате:\n"
-            "ГГГГ-ММ-ДД ЧЧ:ММ\n\n"
+            "ГГГГ-ММ-ДД ЧЧ:ММ\n"
             "📌 Пример: 2026-12-31 23:59\n\n"
-            "Или используйте кнопки:",
+            "Или нажмите кнопку:",
             reply_markup=markup
         )
-    
+
     elif state['step'] == 'waiting_for_deadline':
         text = message.text
         
-        # Обработка кнопок
-        if text == '📅 Сегодня':
-            deadline = datetime.now().replace(hour=23, minute=59, second=0).strftime('%Y-%m-%d %H:%M')
-            state['task_data']['deadline'] = deadline
-            state['step'] = 'duration'
-            
-            # Переходим к вводу длительности
-            estimated = estimate_duration(
-                state['task_data'].get('title', ''),
-                state['task_data'].get('category', '')
-            )
-            
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            markup.add(
-                types.KeyboardButton(f'⚡ {estimated} мин'),
-                types.KeyboardButton('🕐 30 мин'),
-                types.KeyboardButton('🕑 1 час'),
-                types.KeyboardButton('🕒 2 часа'),
-                types.KeyboardButton('❌ Отмена')
-            )
-            
-            bot.send_message(
-                message.chat.id,
-                f"Шаг 4/6: Укажите длительность задачи:\n"
-                f"Рекомендуемое время: {estimated} минут",
-                reply_markup=markup
-            )
-            
-        elif text == '📅 Завтра':
-            deadline = (datetime.now() + timedelta(days=1)).replace(hour=23, minute=59, second=0).strftime('%Y-%m-%d %H:%M')
-            state['task_data']['deadline'] = deadline
-            state['step'] = 'duration'
-            
-            # Переходим к вводу длительности
-            estimated = estimate_duration(
-                state['task_data'].get('title', ''),
-                state['task_data'].get('category', '')
-            )
-            
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            markup.add(
-                types.KeyboardButton(f'⚡ {estimated} мин'),
-                types.KeyboardButton('🕐 30 мин'),
-                types.KeyboardButton('🕑 1 час'),
-                types.KeyboardButton('🕒 2 часа'),
-                types.KeyboardButton('❌ Отмена')
-            )
-            
-            bot.send_message(
-                message.chat.id,
-                f"Шаг 4/6: Укажите длительность задачи:\n"
-                f"Рекомендуемое время: {estimated} минут",
-                reply_markup=markup
-            )
-            
-        elif text == '🚫 Без дедлайна':
+        # Обработка отмены
+        if text == '❌ Отмена':
+            cancel_operation(message)
+            return
+        
+        # Обработка кнопки "Без дедлайна"
+        if text == '🚫 Без дедлайна':
             state['task_data']['deadline'] = 'no_deadline'
             state['step'] = 'duration'
             
-            # Переходим к вводу длительности
+            estimated = estimate_duration(
+                state['task_data'].get('title', ''),
+                state['task_data'].get('category', '')
+            )
+            
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            markup.add(
+                types.KeyboardButton(f'⚡ {estimated} мин'),
+                types.KeyboardButton('🕐 30 мин'),
+                types.KeyboardButton('🕑 1 час'),
+                types.KeyboardButton('🕒 2 часа'),
+                types.KeyboardButton('❌ Отмена')
+            )
+            
+            bot.send_message(
+                message.chat.id,
+                f"Шаг 4/6: Укажите длительность задачи:\n"
+                f"Рекомендуемое время: {estimated} минут",
+                reply_markup=markup
+            )
+            return
+        
+        # Пробуем распарсить введённую пользователем дату
+        try:
+            deadline = datetime.strptime(text, '%Y-%m-%d %H:%M')
+            
+            if deadline < datetime.now():
+                bot.send_message(
+                    message.chat.id,
+                    "❌ Дедлайн не может быть в прошлом!\n\n"
+                    "Введите будущую дату или нажмите 'Без дедлайна'"
+                )
+                return
+            
+            state['task_data']['deadline'] = deadline.strftime('%Y-%m-%d %H:%M')
+            state['step'] = 'duration'
+            
             estimated = estimate_duration(
                 state['task_data'].get('title', ''),
                 state['task_data'].get('category', '')
@@ -394,59 +358,15 @@ def process_task_step(message):
                 reply_markup=markup
             )
             
-        elif text == '❌ Отмена':
-            cancel_operation(message)
-            
-        else:
-            # Пробуем распарсить введённую пользователем дату
-            try:
-                deadline = datetime.strptime(text, '%Y-%m-%d %H:%M')
-                
-                # Проверка, что дата не в прошлом
-                if deadline < datetime.now():
-                    bot.send_message(
-                        message.chat.id,
-                        "❌ Дедлайн не может быть в прошлом!\n"
-                        "Пожалуйста, введите будущую дату и время.\n\n"
-                        "📆 Формат: ГГГГ-ММ-ДД ЧЧ:ММ\n"
-                        "Пример: 2026-12-31 23:59"
-                    )
-                    return
-                
-                state['task_data']['deadline'] = deadline.strftime('%Y-%m-%d %H:%M')
-                state['step'] = 'duration'
-                
-                # Переходим к вводу длительности
-                estimated = estimate_duration(
-                    state['task_data'].get('title', ''),
-                    state['task_data'].get('category', '')
-                )
-                
-                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-                markup.add(
-                    types.KeyboardButton(f'⚡ {estimated} мин'),
-                    types.KeyboardButton('🕐 30 мин'),
-                    types.KeyboardButton('🕑 1 час'),
-                    types.KeyboardButton('🕒 2 часа'),
-                    types.KeyboardButton('❌ Отмена')
-                )
-                
-                bot.send_message(
-                    message.chat.id,
-                    f"Шаг 4/6: Укажите длительность задачи:\n"
-                    f"Рекомендуемое время: {estimated} минут",
-                    reply_markup=markup
-                )
-                
-            except ValueError:
-                bot.send_message(
-                    message.chat.id,
-                    "❌ Неверный формат!\n\n"
-                    "Используйте: ГГГГ-ММ-ДД ЧЧ:ММ\n"
-                    "Пример: 2026-12-31 23:59\n\n"
-                    "Или нажмите одну из кнопок:",
-                    reply_markup=markup
-                )
+        except ValueError:
+            bot.send_message(
+                message.chat.id,
+                "❌ Неверный формат!\n\n"
+                "Используйте: ГГГГ-ММ-ДД ЧЧ:ММ\n"
+                "Пример: 2026-12-31 23:59\n\n"
+                "Или нажмите 'Без дедлайна'",
+                reply_markup=markup
+            )
                 
     elif state['step'] == 'duration':
         if '30 мин' in text:
