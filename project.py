@@ -264,33 +264,10 @@ def process_task_step(message):
         # Извлекаем название категории из emoji+текст
         category = text.split(' ', 1)[1] if ' ' in text else text
         state['task_data']['category'] = category
-        state['step'] = 'deadline'
-
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        markup.add(
-            types.KeyboardButton('📅 Сегодня'),
-            types.KeyboardButton('📅 Завтра'),
-            types.KeyboardButton('📅 Через неделю'),
-            types.KeyboardButton('🚫 Без дедлайна'),
-            types.KeyboardButton('❌ Отменить задачу')
-        )
-
-        bot.send_message(
-            message.chat.id,
-            "Шаг 3/6: Укажи дедлайн:",
-            reply_markup=markup
-        )
-
-    elif state['step'] == 'category':
-        # Извлекаем название категории
-        category = text.split(' ', 1)[1] if ' ' in text else text
-        state['task_data']['category'] = category
         state['step'] = 'waiting_for_deadline'
         
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add(
-            types.KeyboardButton('📅 Сегодня'),
-            types.KeyboardButton('📅 Завтра'),
             types.KeyboardButton('🚫 Без дедлайна'),
             types.KeyboardButton('❌ Отменить задачу')
         )
@@ -304,17 +281,20 @@ def process_task_step(message):
             "Или используй кнопки:",
             reply_markup=markup
         )
-    
+
     elif state['step'] == 'waiting_for_deadline':
         text = message.text
         
-        # Обработка кнопок
-        if text == '📅 Сегодня':
-            deadline = datetime.now().replace(hour=23, minute=59, second=0).strftime('%Y-%m-%d %H:%M')
-            state['task_data']['deadline'] = deadline
+        # Обработка отмены
+        if text == '❌ Отмена':
+            cancel_operation(message)
+            return
+        
+        # Обработка кнопки "Без дедлайна"
+        if text == '🚫 Без дедлайна':
+            state['task_data']['deadline'] = 'no_deadline'
             state['step'] = 'duration'
             
-            # Переходим к вводу длительности
             estimated = estimate_duration(
                 state['task_data'].get('title', ''),
                 state['task_data'].get('category', '')
@@ -335,13 +315,23 @@ def process_task_step(message):
                 f"Рекомендуемое время: {estimated} минут",
                 reply_markup=markup
             )
+            return
+        
+        # Пробуем распарсить введённую пользователем дату
+        try:
+            deadline = datetime.strptime(text, '%Y-%m-%d %H:%M')
             
-        elif text == '📅 Завтра':
-            deadline = (datetime.now() + timedelta(days=1)).replace(hour=23, minute=59, second=0).strftime('%Y-%m-%d %H:%M')
-            state['task_data']['deadline'] = deadline
+            if deadline < datetime.now():
+                bot.send_message(
+                    message.chat.id,
+                    "❌ Дедлайн не может быть в прошлом!\n\n"
+                    "Введите будущую дату или нажмите 'Без дедлайна'"
+                )
+                return
+            
+            state['task_data']['deadline'] = deadline.strftime('%Y-%m-%d %H:%M')
             state['step'] = 'duration'
             
-            # Переходим к вводу длительности
             estimated = estimate_duration(
                 state['task_data'].get('title', ''),
                 state['task_data'].get('category', '')
