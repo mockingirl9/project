@@ -1,0 +1,18 @@
+»мпортируемые библиотеки:
+import telebot Ц ќсновна€ библиотека дл€ Telegram Bot API
+from telebot import types Ц “ипы дл€ клавиатур и кнопок
+import sqlite3 Ц ¬строенна€ Ѕƒ дл€ хранени€ задач
+from datetime import datetime, timedelta Ц –абота с датами и временем
+import threading Ц ƒл€ запуска напоминаний в фоновом потоке
+import time Ц ѕаузы в планировщике
+import schedule Ц ѕланировщик периодических задач
+
+Ѕаза данных:
+“аблица tasks содержит все пол€ задачи:
+id Ч уникальный идентификатор
+user_id Ч Telegram ID пользовател€
+title, category, deadline, duration (в минутах)
+priority (1-3, где 3 Ч высший)
+status (active/completed/overdue)
+address и items_to_bring Ч дополнительна€ информаци€
+
