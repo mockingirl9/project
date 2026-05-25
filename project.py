@@ -286,8 +286,10 @@ def process_task_step(message):
             reply_markup=markup
         )
 
-    elif state['step'] == 'deadline':
-        # Переходим в режим ожидания ввода дедлайна
+    elif state['step'] == 'category':
+        # Извлекаем название категории
+        category = text.split(' ', 1)[1] if ' ' in text else text
+        state['task_data']['category'] = category
         state['step'] = 'waiting_for_deadline'
         
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
