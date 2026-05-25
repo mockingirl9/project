@@ -7,7 +7,7 @@ import time
 import schedule
 
 # Токен бота
-TOKEN = '8988021987:AAGxLUpbmirBTHXXPR2EufMsX3L_-C133tk'
+TOKEN = '8916223177:AAHh-bhfLEfZ0BY1S20p7y9E2mlalaxt0lA'
 bot = telebot.TeleBot(TOKEN)
 
 # Команда /start
